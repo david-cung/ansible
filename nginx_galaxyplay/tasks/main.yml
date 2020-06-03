@@ -1,0 +1,41 @@
+- name: copy rpm files
+  copy: 
+    src: nginx
+    dest: /root
+    owner: root
+    group: root
+
+- name: excute rpm files
+  command: rpm -i /root/nginx/{{item}}
+  with_items:
+    - luajit-2.1.20190329-1.el7.x86_64.rpm
+    - luajit-devel-2.1.20190329-1.el7.x86_64.rpm
+    - nginx-1.15.12-8.el7.vhost.x86_64.rpm    
+
+- name: copy files config
+  copy: 
+    src: files/{{ item }} 
+    dest: /etc/nginx
+
+  with_items:  
+    -  lua
+    -  maps
+    -  nginx.cfg
+    -  nginx.conf
+    -  conf.d
+    -  lua
+    -  maps
+    -  statsd.conf
+    -  galaxyplay.vn.conf
+#- name: copy files with template
+#  template: 
+#    src: galaxyplay.vn.j2
+#    dest: /etc/nginx/conf.d/galaxyplay.vn.conf
+#    mode: 755
+
+- name: remove default file
+  file:
+    path: /etc/nginx/conf.d/default.conf
+    state: absent
+- name: start nginx
+  command: systemctl start nginx

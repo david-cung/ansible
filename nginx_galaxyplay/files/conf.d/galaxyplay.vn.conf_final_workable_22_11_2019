@@ -1,0 +1,110 @@
+map $request_uri $backend {
+    default     0;
+    ~/browse(?P<webapp_uri>.*)    1;
+    ~/title(?P<webapp_uri>.*)     1;
+    ~/watch(?P<webapp_uri>.*)     "/webapp";
+    ~/account(?P<webapp_uri>.*)   "/webapp";
+}
+
+#proxy_cache_path /cache/statics keys_zone=staticcache:10m;
+
+
+server {
+    listen 443 ssl http2 reuseport fastopen=2014 backlog=1024;
+    listen [::]:443 ssl http2;
+    server_name galaxyplay.vn;
+
+    ssl_certificate             /root/.acme.sh/galaxyplay.vn/fullchain.cer;
+    ssl_certificate_key         /root/.acme.sh/galaxyplay.vn/galaxyplay.vn.key;
+    ssl_protocols               TLSv1.2 TLSv1.3;
+    ssl_session_cache           shared:SSL:20m; # 1MB store about 4000 sessions
+    ssl_session_timeout         3h;
+    ssl_early_data              on;
+    ssl_ciphers                 'TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-256-GCM-SHA384:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:!AES128';
+    ssl_prefer_server_ciphers   on;   
+
+    client_body_buffer_size     128k;
+    client_header_buffer_size   1k;
+    large_client_header_buffers 4 2k;
+    client_body_timeout         3m;
+    client_header_timeout       3m;
+      
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt { alias /opt/robots.txt; }
+   location ^~ /main/ {
+        alias  /data/webroot/webapp/;
+
+  }  
+   location / {
+        allow 210.245.122.197/32;
+        allow 183.80.32.165/32;
+        # allow nhapq from home 
+        allow 116.100.253.144/32;
+        allow 27.74.230.13/32;
+        allow 123.20.85.135/32;
+        allow 183.80.32.249/32;
+        allow 171.233.157.5/32;
+        deny all;
+
+        access_by_lua_block {
+            if ngx.var.backend ~= "1" then 
+                ngx.exit(0)
+            end
+
+            ngx.log(ngx.ERR, "TOP: "..ngx.var.backend)
+            
+            local ck        = require "resty.cookie"
+            local jwt       = require "resty.jwt"
+            local string    = require "resty.string"
+            local cjson     = require "cjson"
+
+            local cookie, err = ck:new()    
+
+            if not cookie then
+                ngx.exit(0)
+            end
+
+            -- Get variables
+            local accesstoken, err = cookie:get("access-token")
+            ngx.log(ngx.ERR, "here the access-token ", accesstoken)
+            if not accesstoken then
+                ngx.log(ngx.ERR, err)
+            end
+
+            local jwtkey = "$2a$10$wJrsziiTHN0I8.jj3vH7M.IPKy0./PQ/HxhG0FPItK3xwVv3czH0q"
+            local jwtObj = jwt:verify(jwtkey, accesstoken)
+
+            if jwtObj["verified"] then
+                ngx.var.backend = "/webapp"
+            end
+            --ngx.var.backend = "/webapp"
+        }
+
+        
+
+        root /data/webroot;
+        rewrite ^([^.]*[^/])$ $1/ permanent;
+        try_files $uri $backend/$webapp_uri $backend/index.html @website;
+    }
+
+    location @website {
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass https://10.10.4.124;
+        proxy_buffers 8 4k;
+        proxy_buffer_size 4k;
+        #proxy_cache staticcache;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+    return 301 https://$host$request_uri;
+
+}
+
+

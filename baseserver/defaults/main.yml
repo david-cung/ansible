@@ -1,0 +1,34 @@
+netdata_git_repo: https://github.com/netdata/netdata.git
+netdata_source_dir: /opt/netdata/
+netdata_installer: /opt/netdata/netdata-installer.sh
+
+packages:
+- vim
+- git
+- net-snmp
+- lsof
+- lshw
+- make
+- bash-completion
+- htop
+- wget
+- gcc
+- sysstat
+- bwm-ng
+- ntp
+- bind-utils
+- net-tools
+- telnet
+- zlib-devel
+- libuuid-devel
+- libmnl-devel
+- autoconf 
+- autogen
+- automake
+- pkgconfig 
+- libuv-devel
+- bwm-ng
+- dmidecode
+- tmux
+- net-tools
+- kernel*

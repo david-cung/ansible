@@ -1,0 +1,8 @@
+---
+- name: Deploy nginx server
+  hosts: all
+  become: yes
+  become_user: root
+
+  roles:
+      - nginx_galaxyplay

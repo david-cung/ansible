@@ -1,0 +1,6 @@
+---
+- name: Auto restart netdata service
+  service:
+    name: netdata
+    state: restarted
+    enabled: yes
