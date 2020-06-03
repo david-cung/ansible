@@ -1,0 +1,100 @@
+- name: Update server
+  command: yum update -y
+  
+- name: install epel-release
+  yum:
+    name: epel-release
+    state: latest
+
+- name: Install service
+  yum: 
+    name: "{{ packages}}"
+    state: latest
+    lock_timeout: 180
+
+- name: check vendor
+  command: cat /sys/devices/virtual/dmi/id/bios_vendor
+  register: result
+  ignore_errors: True
+  changed_when: False
+  failed_when: False
+
+- debug:
+    var: result
+- name: install
+  yum:
+    name: ipmitool
+  when: "'American Megatrends Inc.' in result.stdout"
+
+- name: copy motd
+  copy:
+    src: motd.sh
+    dest: /usr/local/bin/motd.sh
+    owner: root
+    group: root
+    mode: 744
+
+- name: execute motd
+  command: sh /usr/local/bin/motd.sh
+
+- name: disabled selinux
+  command: sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+- name: Clone or Pull for Install or Update
+  git:
+    repo: "{{ netdata_git_repo }}"
+    dest: "{{ netdata_source_dir }}"
+    force: yes
+
+- name: Build and install
+  command: bash netdata-installer.sh --dont-wait --libs-are-really-here
+  args:
+    chdir: /opt/netdata/
+  become: yes
+  
+- name: auto restart netdata service
+  service:
+    name: netdata
+    enabled: yes
+
+- name: copy file stream.conf
+  copy:
+    src: stream.conf
+    dest: /etc/netdata
+    owner: root
+    group: root    
+
+- name: copy file sysctl  to systemd
+  copy:
+    src: sysctl.conf
+    dest: /etc/sysctl.conf
+    owner: root
+    group: root
+
+- name: copy file ssh config
+  copy:
+    src: sshd_config
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+
+- name: restart sshd
+  command: sudo systemctl restart sshd
+
+- name: Insert multiple lines in file limits
+  blockinfile:
+    path: /etc/security/limits.conf
+    backup: yes
+    block: |
+      #Set ulimit
+      *          soft     nproc         65535
+      *          hard     nproc         65535
+      *          soft     nofile        65535
+      *          hard     nofile        65535
+      
+- name: Update time
+  command: ln -f -s /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
+  notify:
+    - start ntpd
+- name: restart server
+  reboot:

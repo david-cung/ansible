@@ -1,0 +1,21 @@
+users:
+  - username: phatnk
+    use_sudo: yes
+    
+  - username: duyvd
+    use_sudo: yes
+    
+  - username: khanhnh
+    use_sudo: yes
+    
+  - username: nhannt
+    use_sudo: yes
+    
+  - username: dungta
+    use_sudo: yes
+
+  - username: anhvt
+    use_sudo: yes
+
+  - username: deploy
+    use_sudo: yes
